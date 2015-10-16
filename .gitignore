@@ -1,0 +1,9 @@
+*.~
+*.py[cod]
+*.egg-info/
+*.egg
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.cache
