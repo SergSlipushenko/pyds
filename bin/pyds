@@ -3,17 +3,22 @@
 
 import json
 import httplib
+import os
 import sys
 
 if __name__ == '__main__':
     if len(sys.argv) == 1:
-        exit(1)
-
-    tag = sys.argv[1]
-    server = sys.argv[2]
+        tag = None
+    else:
+        tag = sys.argv[1]
+    server = os.environ.get('PYDS_HOST', '127.0.0.1:7070')
     h = httplib.HTTPConnection(server)
     headers = {'Content-type': 'application/json'}
     h.request('GET', '/', headers=headers)
     servers = json.loads(h.getresponse().read())
-    if tag in servers:
-        print servers.get(tag)
+    if tag:
+        if tag in servers:
+            print servers.get(tag)
+    else:
+        for tag in servers:
+            print '%s:%s' % (tag, servers.get(tag))
