@@ -24,5 +24,5 @@ while True:
         if r.status == 200:
             print ip
         time.sleep(5)
-    except ValueError:
+    except socket.error:
         pass
