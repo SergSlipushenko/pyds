@@ -14,19 +14,14 @@ if len(sys.argv) == 1:
 tag = sys.argv[1]
 server = sys.argv[2]
 
-while True:
-    try:
-        co = subprocess.Popen(['ifconfig'], stdout=subprocess.PIPE)
-        ips = [line.strip().split(':')[1].split(' ')[0]
-               for line in co.stdout.read().split('\n')
-               if 'inet addr:' in line]
-        data = json.dumps({tag: ips})
-        h = httplib.HTTPConnection(server)
-        headers = {'Content-type': 'application/json'}
-        h.request('POST', '/', data, headers)
-        r = h.getresponse()
-        if r.status == 200:
-            print ips
-    except socket.error:
-        pass
-    time.sleep(5)
+co = subprocess.Popen(['ifconfig'], stdout=subprocess.PIPE)
+ips = [line.strip().split(':')[1].split(' ')[0]
+       for line in co.stdout.read().split('\n')
+       if 'inet addr:' in line]
+data = json.dumps({tag: ips})
+h = httplib.HTTPConnection(server)
+headers = {'Content-type': 'application/json'}
+h.request('POST', '/', data, headers)
+r = h.getresponse()
+if r.status == 200:
+    print ips
