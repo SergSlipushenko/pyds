@@ -14,7 +14,7 @@ if len(sys.argv) == 1:
 tag = sys.argv[1]
 server = sys.argv[2]
 
-co = subprocess.Popen(['ifconfig'], stdout=subprocess.PIPE)
+co = subprocess.Popen(['/sbin/ifconfig'], stdout=subprocess.PIPE)
 ips = [line.strip().split(':')[1].split(' ')[0]
        for line in co.stdout.read().split('\n')
        if 'inet addr:' in line]
