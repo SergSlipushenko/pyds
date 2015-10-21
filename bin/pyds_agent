@@ -1,13 +1,14 @@
 #! /usr/bin/env python
-# *-* coding: utf8 *-*
 
 import httplib
 import json
 import sys
 import socket
+import subprocess
 import time
 
 if len(sys.argv) == 1:
+    print "no tag specified"
     exit(1)
 
 tag = sys.argv[1]
@@ -15,14 +16,17 @@ server = sys.argv[2]
 
 while True:
     try:
-        ip = socket.gethostbyname(socket.gethostname())
-        data = json.dumps({tag: ip})
+        co = subprocess.Popen(['ifconfig'], stdout=subprocess.PIPE)
+        ips = [line.strip().split(':')[1].split(' ')[0]
+               for line in co.stdout.read().split('\n')
+               if 'inet addr:' in line]
+        data = json.dumps({tag: ips})
         h = httplib.HTTPConnection(server)
         headers = {'Content-type': 'application/json'}
         h.request('POST', '/', data, headers)
         r = h.getresponse()
         if r.status == 200:
-            print ip
-        time.sleep(5)
+            print ips
     except socket.error:
         pass
+    time.sleep(5)
