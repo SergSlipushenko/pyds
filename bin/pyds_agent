@@ -15,7 +15,6 @@ tag = sys.argv[1]
 server = sys.argv[2] if sys.argv[2:3] else '127.0.0.1:7070'
 
 co = subprocess.Popen(['/sbin/ifconfig'], stdout=subprocess.PIPE)
-import pdb;pdb.set_trace()
 iface_blocks = [block for block in co.stdout.read().split('\n\n') if block]
 ips = {}
 for block in iface_blocks:
