@@ -11,6 +11,8 @@ if __name__ == '__main__':
     tag = sys.argv[1] if sys.argv[1:] else None
     iface = sys.argv[2] if sys.argv[2:] else None
     server = os.environ.get('PYDS_HOST', '127.0.0.1:7070')
+    if ':' not in server:
+        server += ':7070'
     h = httplib.HTTPConnection(server)
     headers = {'Content-type': 'application/json'}
     h.request('GET', '/', headers=headers)
