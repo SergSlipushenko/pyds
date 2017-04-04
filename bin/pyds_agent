@@ -13,7 +13,7 @@ from pprint import pprint
 
 DISCOVERY = 'discover'
 REPORT = 'report'
-CLUSTER = '7ebb8929'
+PREFIX = '7ebb8929'
 SCHEMA = 'https://'
 SERVER = 'dweet.io'
 POST_URL = '/dweet/for/'
@@ -36,7 +36,17 @@ def get_ifconfig():
 
 
 def get_discovery_dweet_name(cluster):
-    return '-'.join((DISCOVERY, cluster))
+    if cluster:
+        return '-'.join((DISCOVERY, PREFIX, cluster))
+    else:
+        return '-'.join((DISCOVERY, PREFIX))
+
+
+def get_report_dweet_name(cluster):
+    if cluster:
+        return '-'.join((REPORT, PREFIX, cluster, host))
+    else:
+        return '-'.join((REPORT, PREFIX, host))
 
 
 def get_catalog(thing):
@@ -65,8 +75,8 @@ def upd_catalog(thing, content):
         print 'Error(%s): %s' % (r.status, r.reason)
 
 
-def keep_alive(tag, host):
-    thing = get_discovery_dweet_name(tag)
+def keep_alive(cluster, host):
+    thing = get_discovery_dweet_name(cluster)
     for i in itertools.count():
         catalog, current_ts = get_catalog(thing)
         catalog[host] = current_ts
@@ -92,20 +102,17 @@ if __name__ == "__main__":
         sys.exit(2)
 
     if not opts:
-        print 'Usage: pyds_agent [-t CLUSTER_TAG] -h HOSTNAME [-p PARAM_KEY:PARAM_VAL]...  [-d] [-n] [-u]'
+        print 'Usage: pyds_agent [-c CLUSTER_TAG] -h HOSTNAME [-p PARAM_KEY:PARAM_VAL]...  [-d] [-n] [-u]'
         exit(1)
 
-    tag = 'default'
     host = None
-    cluster = CLUSTER
+    cluster = None
     dry_run = False
     send_net_cfg = False
     update_ts = False
     data = {}
     for opt, val in opts:
-        if opt == "-t":
-            tag = val
-        elif opt == "-h":
+        if opt == "-h":
             host = val
         elif opt == '-c':
             cluster = val
@@ -125,7 +132,7 @@ if __name__ == "__main__":
     discover_dweet = get_discovery_dweet_name(cluster)
     print 'Update discovery on %s' % SCHEMA + SERVER + POST_URL + discover_dweet
 
-    report_dweet = '-'.join((REPORT, cluster, tag, host))
+    report_dweet = get_report_dweet_name(cluster)
     print 'Report to %s' % SCHEMA + SERVER + POST_URL + report_dweet
 
     if send_net_cfg:
@@ -133,7 +140,7 @@ if __name__ == "__main__":
 
     if not dry_run:
         if update_ts:
-            keep_alive(tag, host)
+            keep_alive(cluster, host)
 
         h = httplib.HTTPSConnection(SERVER)
         headers = {'Content-type': 'application/json'}
