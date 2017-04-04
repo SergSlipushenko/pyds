@@ -9,6 +9,7 @@ import random
 import getopt
 import sys
 
+DISCOVERY = 'discover'
 PREFIX = '7ebb8929'
 SCHEMA = 'https://'
 SERVER = 'dweet.io'
@@ -17,8 +18,11 @@ GET_URL = '/get/latest/dweet/for/'
 TTL = 5*60
 
 
-def get_thing(tag):
-    return '-'.join((PREFIX, tag))
+def get_thing(cluster):
+    if cluster:
+        return '-'.join((DISCOVERY, PREFIX, cluster))
+    else:
+        return '-'.join((DISCOVERY, PREFIX))
 
 
 def get_dweet(thing):
@@ -37,8 +41,8 @@ def get_dweet(thing):
         time.sleep(1)
 
 
-def print_catalog(tag):
-    thing = get_thing(tag)
+def print_catalog(cluster):
+    thing = get_thing(cluster)
     catalog, current_ts = get_dweet(thing)
     sorted_catalog = sorted(catalog.items(), key=lambda item: item[1], reverse=True)
     for name, ts in sorted_catalog:
@@ -47,20 +51,15 @@ def print_catalog(tag):
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "t:p:")
+        opts, args = getopt.getopt(sys.argv[1:], "c:")
     except getopt.GetoptError as err:
         print str(err)
         sys.exit(2)
 
-    tag = None
+    cluster = None
     for opt, val in opts:
-        if opt == '-t':
-            tag = val
-        elif opt == '-p':
-            PREFIX = val
+        if opt == '-c':
+            cluster = val
 
-    if tag is None:
-        print 'Tag (-t) is not optional'
-        exit(1)
-
-    print_catalog(tag)
+    print 'Get catalog from %s' % (SCHEMA + SERVER + GET_URL + get_thing(cluster))
+    print_catalog(cluster)
