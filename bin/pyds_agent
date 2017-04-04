@@ -10,7 +10,6 @@ import random
 import getopt
 import sys
 from pprint import pprint
-from ast import  literal_eval
 
 DISCOVERY = 'discover'
 REPORT = 'report'
@@ -113,10 +112,7 @@ if __name__ == "__main__":
         elif opt == '-p':
             if ':' in val:
                 k, v = val.split(':')
-                try:
-                    data[k] = literal_eval(v)
-                except SyntaxError:
-                    data[k] = v
+                data[k] = v
             else:
                 data[val] = None
         elif opt == '-n':
