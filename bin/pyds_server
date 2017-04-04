@@ -1,9 +1,0 @@
-#! /usr/bin/env python
-# *-* coding: utf8 *-*
-
-from pyds import server
-import daemon
-
-if __name__ == '__main__':
-    with daemon.DaemonContext():
-        server.serve()
