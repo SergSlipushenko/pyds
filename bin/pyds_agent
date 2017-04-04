@@ -2,33 +2,86 @@
 
 import httplib
 import json
-import sys
-import socket
-import subprocess
 import time
+from email.utils import parsedate
+import itertools
+import random
+import getopt
+import sys
 
-if len(sys.argv) == 1:
-    print "no tag specified"
-    exit(1)
+PREFIX = '7ebb8929'
+SCHEMA = 'https://'
+SERVER = 'dweet.io'
+POST_URL = '/dweet/for/'
+GET_URL = '/get/latest/dweet/for/'
+TTL = 7*60
 
-tag = sys.argv[1]
-server = sys.argv[2] if sys.argv[2:3] else '127.0.0.1:7070'
 
-co = subprocess.Popen(['/sbin/ifconfig'], stdout=subprocess.PIPE)
-iface_blocks = [block for block in co.stdout.read().split('\n\n') if block]
-ips = {}
-for block in iface_blocks:
-    name = block.split()[0]
-    ip = next((line.strip().split(':')[1].split(' ')[0]
-               for line in block.split('\n') if 'inet addr:' in line), None)
-    if ip:
-        ips[name] = ip
+def get_thing(tag):
+    return '-'.join((PREFIX, tag))
 
-data = json.dumps({tag: ips})
-h = httplib.HTTPConnection(server)
-headers = {'Content-type': 'application/json'}
-h.request('POST', '/', data, headers)
-r = h.getresponse()
-if r.status == 200:
-    print 'Reported to %s' % server
-    print ips
+
+def get_dweet(thing):
+    while True:
+        time.sleep(1 + random.random()*3)
+        c = httplib.HTTPConnection(SERVER)
+        c.request('GET', GET_URL + thing, headers={'Content-type': 'application/json'})
+        r = c.getresponse()
+        if r.status < 300:
+            body = json.loads(r.read())
+            ts = int(time.mktime(parsedate(r.getheader('date'))))
+            if body['this'] == 'succeeded':
+                content = body['with'][0]['content']
+                return content, ts
+            elif body.get('with') == 404:
+                return {}, ts
+
+
+def upd_dweet(thing, content):
+    c = httplib.HTTPConnection(SERVER)
+    c.request('POST', POST_URL + thing,
+              body=json.dumps(content),
+              headers= {'Content-type': 'application/json'})
+    r = c.getresponse()
+    if r.status >= 400:
+        print 'Error(%s): %s' % (r.status, r.reason)
+
+
+def keep_alive(tag, name):
+    thing = get_thing(tag)
+    name = name
+    for i in itertools.count():
+        catalog, current_ts = get_dweet(thing)
+        catalog[name] = current_ts
+        for item, ts in catalog.items():
+            if current_ts - ts > TTL:
+                catalog.pop(item)
+                print '%s is gone' % item
+        upd_dweet(thing, catalog)
+        catalog, _ = get_dweet(thing)
+        if catalog.get(name) == current_ts:
+            print '%s is alive!' % name
+            break
+        if i >= 7:
+            print 'Enough for %s' % name
+            exit(1)
+
+if __name__ == "__main__":
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "t:n:p:")
+    except getopt.GetoptError as err:
+        print str(err)  # will print something like "option -a not recognized"
+        sys.exit(2)
+
+    tag = None
+    name = None
+    prefix = PREFIX
+    for opt, val in opts:
+        if opt == "-t":
+            tag = val
+        elif opt == "-n":
+            name = val
+        elif opt == '-p':
+            prefix = val
+
+    keep_alive(tag, name)
