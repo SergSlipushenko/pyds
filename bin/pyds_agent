@@ -57,7 +57,7 @@ def get_catalog(thing):
         r = c.getresponse()
         if r.status < 300:
             body = json.loads(r.read())
-            ts = int(time.mktime(parsedate(r.getheader('date'))))
+            ts = int(time.mktime(parsedate(r.getheader('date')))) - time.altzone
             if body['this'] == 'succeeded':
                 content = body['with'][0]['content']
                 return content, ts
