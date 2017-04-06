@@ -7,6 +7,7 @@ import json
 import sys
 import time
 from email.utils import parsedate
+from collections import OrderedDict
 
 
 DISCOVERY = 'discover'
@@ -51,20 +52,27 @@ def get_dweet(thing):
         time.sleep(1)
 
 
-def print_catalog(cluster, report_all):
+def print_catalog(cluster, report_all, params):
     catalog, current_ts = get_dweet(get_discovery_dweet(cluster))
     sorted_catalog = sorted(catalog.items(), key=lambda item: item[1], reverse=True)
+    summary = OrderedDict()
     for host, ts in sorted_catalog:
-        print '%s: %ss ago' % (host, current_ts - ts)
-        print 'Follow url: %s' % (SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host))
         if report_all:
-            report, _ = get_dweet(get_report_dweet(cluster, host))
-            print json.dumps(report, indent=2)
+            raw_report, _ = get_dweet(get_report_dweet(cluster, host))
+            raw_report['follow_url'] = SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host)
+            raw_report['last_report'] = current_ts - ts
+            if params:
+                report = {k: raw_report[k] for k in params}
+            else:
+                report = raw_report
+            summary[host] = report
+    print json.dumps(summary, indent=2)
 
 
 def print_report(cluster, host):
-    print 'Follow url: %s' % (SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host))
     report, _ = get_dweet(get_report_dweet(cluster, host))
+    report['follow_url'] = SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(
+        cluster, host)
     print json.dumps(report, indent=2)
 
 
@@ -108,7 +116,7 @@ def update_hosts(cluster, force):
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:h:ufa")
+        opts, args = getopt.getopt(sys.argv[1:], "c:h:ufap:")
     except getopt.GetoptError as err:
         print str(err)
         sys.exit(2)
@@ -123,6 +131,7 @@ if __name__ == "__main__":
     show_hosts = False
     upd_hosts = False
     force = False
+    params = []
     for opt, val in opts:
         if opt == '-c':
             cluster = val
@@ -134,14 +143,14 @@ if __name__ == "__main__":
             upd_hosts = True
         if opt == '-f':
             force = True
+        elif opt == '-p':
+            params.append(val)
 
     if upd_hosts:
         update_hosts(cluster, force)
-        exit(1)
+        exit()
 
     if host is None:
-        print 'Get catalog from %s' % (SCHEMA + SERVER + GET_URL + get_discovery_dweet(cluster))
-        print_catalog(cluster, report_all)
+        print_catalog(cluster, report_all, params)
     else:
-        print 'Get report from %s' % (SCHEMA + SERVER + GET_URL + get_report_dweet(cluster, host))
         print_report(cluster, host)
