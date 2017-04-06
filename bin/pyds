@@ -71,9 +71,29 @@ def print_hosts(cluster):
     for host in catalog:
         report, _ = get_dweet(get_report_dweet(cluster, host))
         if 'external' in report and report['external'] in report:
-            hosts.append('%s\t%s' % (host, report[report['external']]))
+            hosts.append('%s\t%s' % (report[report['external']], host))
     print '\n'.join(hosts)
 
+
+# def update_hosts(cluster):
+#     raw_catalog, _ = get_dweet(get_discovery_dweet(cluster))
+#     catalog = {}
+#     for host in raw_catalog:
+#         report, _ = get_dweet(get_report_dweet(cluster, host))
+#         if 'external' in report and report['external'] in report:
+#             catalog[host] = '%s\t%s' % (host, report[report['external']])
+#
+#     upd_hosts = []
+#     with open('/etc/hosts') as f_hosts:
+#         hosts = f_hosts.read().split('\n')
+#     for line in hosts:
+#         for host in catalog:
+#             if line.startswith(host):
+#                 line = catalog[host]
+#                 catalog.pop(host)
+#         upd_hosts.append(line)
+#     upd_hosts.extend(catalog.values())
+#     print '\n'.join(upd_hosts)
 
 if __name__ == "__main__":
     try:
