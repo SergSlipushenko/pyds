@@ -2,7 +2,6 @@
 # *-* coding: utf8 *-*
 
 import getopt
-import urllib2
 import httplib
 import json
 import sys
@@ -49,15 +48,17 @@ def get_dweet(thing):
                 return content, ts
             elif body.get('with') == 404:
                 return {}, ts
-        print r
         time.sleep(1)
 
 
-def print_catalog(cluster):
+def print_catalog(cluster, report_all):
     catalog, current_ts = get_dweet(get_discovery_dweet(cluster))
     sorted_catalog = sorted(catalog.items(), key=lambda item: item[1], reverse=True)
-    for name, ts in sorted_catalog:
-        print '%s: %ss ago' % (name, current_ts - ts)
+    for host, ts in sorted_catalog:
+        print '%s: %ss ago' % (host, current_ts - ts)
+        if report_all:
+            report, _ = get_dweet(get_report_dweet(cluster, host))
+            print json.dumps(report, indent=2)
 
 
 def print_report(cluster, host):
@@ -65,61 +66,80 @@ def print_report(cluster, host):
     print json.dumps(report, indent=2)
 
 
-def print_hosts(cluster):
-    hosts = []
-    catalog, _ = get_dweet(get_discovery_dweet(cluster))
-    for host in catalog:
+def update_hosts(cluster, force):
+    raw_catalog, _ = get_dweet(get_discovery_dweet(cluster))
+    hosts_cluster = []
+    for host in raw_catalog:
         report, _ = get_dweet(get_report_dweet(cluster, host))
         if 'external' in report and report['external'] in report:
-            hosts.append('%s\t%s' % (report[report['external']], host))
-    print '\n'.join(hosts)
+            hosts_cluster.append(
+                '%s\t%s.%s' % (report[report['external']], host, cluster))
+    upd_hosts = []
+    with open('/etc/hosts') as f_hosts:
+        hosts_lines = f_hosts.read().split('\n')
+    start = '# PYDS(%s) >>' % cluster
+    stop = '# PYDS(%s) <<' % cluster
+    if start not in hosts_lines:
+        if hosts_cluster:
+            upd_hosts = hosts_lines
+            upd_hosts.append(start)
+            upd_hosts.extend(hosts_cluster)
+            upd_hosts.append(stop)
+            upd_hosts.append('')
+        else:
+            upd_hosts = hosts_lines
+    else:
+        if hosts_cluster:
+            upd_hosts.extend(hosts_lines[:hosts_lines.index(start)+1])
+            upd_hosts.extend(hosts_cluster)
+            upd_hosts.extend(hosts_lines[hosts_lines.index(stop):])
+        else:
+            upd_hosts.extend(hosts_lines[:hosts_lines.index(start)])
+            upd_hosts.extend(hosts_cluster)
+            upd_hosts.extend(hosts_lines[hosts_lines.index(stop)-1:])
+    if force:
+        with open('hosts', mode='w') as f:
+            f.write('\n'.join(upd_hosts))
+    else:
+        print '\n'.join(upd_hosts)
 
-
-# def update_hosts(cluster):
-#     raw_catalog, _ = get_dweet(get_discovery_dweet(cluster))
-#     catalog = {}
-#     for host in raw_catalog:
-#         report, _ = get_dweet(get_report_dweet(cluster, host))
-#         if 'external' in report and report['external'] in report:
-#             catalog[host] = '%s\t%s' % (host, report[report['external']])
-#
-#     upd_hosts = []
-#     with open('/etc/hosts') as f_hosts:
-#         hosts = f_hosts.read().split('\n')
-#     for line in hosts:
-#         for host in catalog:
-#             if line.startswith(host):
-#                 line = catalog[host]
-#                 catalog.pop(host)
-#         upd_hosts.append(line)
-#     upd_hosts.extend(catalog.values())
-#     print '\n'.join(upd_hosts)
 
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:h:u")
+        opts, args = getopt.getopt(sys.argv[1:], "c:h:ufa")
     except getopt.GetoptError as err:
         print str(err)
         sys.exit(2)
 
+    if not opts:
+        print 'Usage: ./pyds [-c CLUSTER] [-h HOST] [-a] [-u [-f]]'
+        exit(1)
+
     cluster = None
+    report_all = False
     host = None
+    show_hosts = False
     upd_hosts = False
+    force = False
     for opt, val in opts:
         if opt == '-c':
             cluster = val
+        if opt == '-a':
+            report_all = True
         if opt == '-h':
             host = val
         if opt == '-u':
             upd_hosts = True
+        if opt == '-f':
+            force = True
 
     if upd_hosts:
-        print_hosts(cluster)
+        update_hosts(cluster, force)
         exit(1)
 
     if host is None:
         print 'Get catalog from %s' % (SCHEMA + SERVER + GET_URL + get_discovery_dweet(cluster))
-        print_catalog(cluster)
+        print_catalog(cluster, report_all)
     else:
         print 'Get report from %s' % (SCHEMA + SERVER + GET_URL + get_report_dweet(cluster, host))
         print_report(cluster, host)
