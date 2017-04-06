@@ -56,12 +56,14 @@ def print_catalog(cluster, report_all):
     sorted_catalog = sorted(catalog.items(), key=lambda item: item[1], reverse=True)
     for host, ts in sorted_catalog:
         print '%s: %ss ago' % (host, current_ts - ts)
+        print 'Follow url: %s' % (SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host))
         if report_all:
             report, _ = get_dweet(get_report_dweet(cluster, host))
             print json.dumps(report, indent=2)
 
 
 def print_report(cluster, host):
+    print 'Follow url: %s' % (SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host))
     report, _ = get_dweet(get_report_dweet(cluster, host))
     print json.dumps(report, indent=2)
 
@@ -98,7 +100,7 @@ def update_hosts(cluster, force):
             upd_hosts.extend(hosts_cluster)
             upd_hosts.extend(hosts_lines[hosts_lines.index(stop)-1:])
     if force:
-        with open('hosts', mode='w') as f:
+        with open('/etc/hosts', mode='w') as f:
             f.write('\n'.join(upd_hosts))
     else:
         print '\n'.join(upd_hosts)
