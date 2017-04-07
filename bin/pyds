@@ -57,15 +57,17 @@ def print_catalog(cluster, report_all, params):
     sorted_catalog = sorted(catalog.items(), key=lambda item: item[1], reverse=True)
     summary = OrderedDict()
     for host, ts in sorted_catalog:
+        raw_report = {
+            'follow_url': SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host),
+            'last_report': current_ts - ts
+        }
         if report_all:
-            raw_report, _ = get_dweet(get_report_dweet(cluster, host))
-            raw_report['follow_url'] = SCHEMA + SERVER + FOLLOW_URL + get_report_dweet(cluster, host)
-            raw_report['last_report'] = current_ts - ts
-            if params:
-                report = {k: raw_report[k] for k in params}
-            else:
-                report = raw_report
-            summary[host] = report
+            raw_report.update(get_dweet(get_report_dweet(cluster, host))[0])
+        if params:
+            report = {k: raw_report[k] for k in params}
+        else:
+            report = raw_report
+        summary[host] = report
     print json.dumps(summary, indent=2)
 
 
@@ -105,7 +107,6 @@ def update_hosts(cluster, force):
             upd_hosts.extend(hosts_lines[hosts_lines.index(stop):])
         else:
             upd_hosts.extend(hosts_lines[:hosts_lines.index(start)])
-            upd_hosts.extend(hosts_cluster)
             upd_hosts.extend(hosts_lines[hosts_lines.index(stop)-1:])
     if force:
         with open('/etc/hosts', mode='w') as f:
@@ -114,15 +115,23 @@ def update_hosts(cluster, force):
         print '\n'.join(upd_hosts)
 
 
+def inventory():
+    cluster = 'spark'
+    raw_catalog, _ = get_dweet(get_discovery_dweet(cluster))
+    inv = {cluster: ['%s.%s' % (host, cluster) for host in raw_catalog.keys()]}
+    print json.dumps(inv, indent=2)
+
+
+
 if __name__ == "__main__":
     try:
-        opts, args = getopt.getopt(sys.argv[1:], "c:h:ufap:")
+        opts, args = getopt.getopt(sys.argv[1:], "c:h:ufap:", longopts=['list', 'host'])
     except getopt.GetoptError as err:
         print str(err)
         sys.exit(2)
 
     if not opts:
-        print 'Usage: ./pyds [-c CLUSTER] [-h HOST] [-a] [-u [-f]]'
+        print 'Usage: ./pyds [-c CLUSTER] [-h HOST] [-d] [-u [-f]]'
         exit(1)
 
     cluster = None
@@ -135,7 +144,7 @@ if __name__ == "__main__":
     for opt, val in opts:
         if opt == '-c':
             cluster = val
-        if opt == '-a':
+        if opt == '-d':
             report_all = True
         if opt == '-h':
             host = val
@@ -143,8 +152,15 @@ if __name__ == "__main__":
             upd_hosts = True
         if opt == '-f':
             force = True
-        elif opt == '-p':
+        if opt == '-p':
             params.append(val)
+        if opt == '--host':
+            print '{}'
+            exit()
+        if opt == '--list':
+            inventory()
+            exit()
+
 
     if upd_hosts:
         update_hosts(cluster, force)
