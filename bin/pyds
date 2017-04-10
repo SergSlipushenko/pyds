@@ -6,6 +6,7 @@ import httplib
 import json
 import sys
 import time
+import os
 from email.utils import parsedate
 from collections import OrderedDict
 
@@ -118,7 +119,13 @@ def update_hosts(cluster, force):
 def inventory():
     cluster = 'spark'
     raw_catalog, _ = get_dweet(get_discovery_dweet(cluster))
-    inv = {cluster: ['%s.%s' % (host, cluster) for host in raw_catalog.keys()]}
+    inv = {
+        cluster: {
+            'hosts': ['%s.%s' % (host, cluster) for host in raw_catalog.keys()],
+            'vars': {k.lower(): os.environ[k]
+                     for k in os.environ
+                     if k.lower().startswith('ansible_')}
+        }}
     print json.dumps(inv, indent=2)
 
 
