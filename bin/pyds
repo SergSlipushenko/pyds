@@ -53,7 +53,7 @@ def get_dweet(thing):
         time.sleep(1)
 
 
-def print_catalog(cluster, report_all, params):
+def get_summary(cluster, report_all, params=None):
     catalog, current_ts = get_dweet(get_discovery_dweet(cluster))
     sorted_catalog = sorted(catalog.items(), key=lambda item: item[1], reverse=True)
     summary = OrderedDict()
@@ -69,7 +69,11 @@ def print_catalog(cluster, report_all, params):
         else:
             report = raw_report
         summary[host] = report
-    print json.dumps(summary, indent=2)
+    return summary
+
+
+def print_catalog(cluster, report_all, params):
+    print json.dumps(get_summary(cluster, report_all, params), indent=2)
 
 
 def print_report(cluster, host):
@@ -118,7 +122,7 @@ def update_hosts(cluster, force):
 
 def inventory():
     cluster = os.environ.get('PYDS_CLUSTER') or 'spark'
-    raw_catalog, _ = get_dweet(get_discovery_dweet(cluster))
+    raw_catalog = get_summary(cluster, report_all=True)
     cluster_vars = {
         'ansible_ssh_common_args': '-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null',
         'ansible_ssh_pass': 'ubuntu',
@@ -128,11 +132,16 @@ def inventory():
         {k.lower(): os.environ[k]
          for k in os.environ
          if k.lower().startswith('ansible_')})
+
     env = {
         cluster: {
             'hosts': ['%s.%s' % (host, cluster) for host in raw_catalog.keys()],
-            'vars': cluster_vars}
+            'vars': cluster_vars,
+            '_meta': {
+                'hostvars': {'%s.%s' % (host, cluster): {'ansible_host': values[values['external']]} for host, values in raw_catalog.items() if 'external' in values}
+            }
         }
+    }
     print json.dumps(env, indent=2)
 
 
