@@ -137,9 +137,11 @@ def inventory():
         cluster: {
             'hosts': ['%s.%s' % (host, cluster) for host in raw_catalog.keys()],
             'vars': cluster_vars,
-            '_meta': {
-                'hostvars': {'%s.%s' % (host, cluster): {'ansible_host': values[values['external']]} for host, values in raw_catalog.items() if 'external' in values}
-            }
+        },
+        '_meta': {
+            'hostvars': {'%s.%s' % (host, cluster): {
+                'ansible_host': values[values['external']]} for host, values in
+                         raw_catalog.items() if 'external' in values}
         }
     }
     print json.dumps(env, indent=2)
