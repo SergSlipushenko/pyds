@@ -1,0 +1,32 @@
+- name: Updating package cache
+  apt:
+    update_cache: yes
+
+- name: Install needed packages for docker
+  apt:
+    name: "{{ item }}"
+  with_items:
+    - "apt-transport-https"
+    - "ca-certificates"
+    - "curl"
+    - "software-properties-common"
+
+- name: Add docker repo key
+  shell: "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -"
+
+- name:  Add docker repository
+  apt_repository:
+    repo: "deb [arch=armhf] https://download.docker.com/linux/ubuntu xenial stable"
+    update_cache: yes
+
+- name: Install docker package
+  apt:
+    name: docker-ce
+    state: present
+
+- name: Enable non sudo access to docker
+  user:
+    name: "{{ ansible_user }}"
+    group: docker
+    append: yes
+  

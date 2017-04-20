@@ -1,0 +1,10 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Setup docker
+      include: "setup.yml"
+
+    - name: Initialize swarm
+      include: "swarm.yml"

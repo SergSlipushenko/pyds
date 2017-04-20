@@ -1,0 +1,17 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: no
+  tasks:
+    - name: Check if we already in a swarm mode
+      shell: "docker info | egrep '^Swarm: ' | cut -d ' ' -f2"
+      register: swarm_status
+
+    - name: Disable swarm on each node
+      shell: "docker swarm leave --force"
+      when: swarm_status.stdout != "inactive"
+
+    - name: Cleanup docker
+      apt:
+        name: docker-ce
+        state: absent
